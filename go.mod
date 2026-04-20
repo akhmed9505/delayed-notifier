@@ -2,7 +2,10 @@ module github.com/akhmed9505/delayed-notifier
 
 go 1.26.1
 
-require github.com/wb-go/wbf v0.0.13
+require (
+	github.com/google/uuid v1.4.0
+	github.com/wb-go/wbf v0.0.13
+)
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
