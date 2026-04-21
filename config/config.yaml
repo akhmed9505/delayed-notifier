@@ -13,3 +13,27 @@ postgres:
     max_conns: 10
     min_conns: 2
     max_conn_lifetime: 30m
+
+rabbitmq:
+  host: "rabbitmq"
+  port: 5672
+  user: "guest"
+  password: "guest"
+  vhost: "/"
+  exchange: "notification-exchange"
+  routing_key: "notification.send"
+  queue: "notification-queue"
+  dlq: "notification-dlq"
+
+redis:
+  host: "redis"
+  port: 6379
+  password: ""
+  db: 0
+  ttl: 24h
+
+retry:
+  attempts: 5
+  delay: 1s
+  backoff: 2.0
+  max_delay: 1m

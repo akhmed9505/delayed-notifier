@@ -11,6 +11,9 @@ import (
 type Config struct {
 	HTTPServer HTTPServer `mapstructure:"http_server"`
 	Postgres   Postgres   `mapstructure:"postgres"`
+	RabbitMQ   RabbitMQ   `mapstructure:"rabbitmq"`
+	Redis      Redis      `mapstructure:"redis"`
+	Retry      Retry      `mapstructure:"retry"`
 }
 
 type HTTPServer struct {
@@ -34,6 +37,33 @@ type PoolConfig struct {
 	MaxConns        int32         `mapstructure:"max_conns"`
 	MinConns        int32         `mapstructure:"min_conns"`
 	MaxConnLifetime time.Duration `mapstructure:"max_conn_lifetime"`
+}
+
+type RabbitMQ struct {
+	Host       string `mapstructure:"host"`
+	Port       int    `mapstructure:"port"`
+	User       string `mapstructure:"user"`
+	Password   string `mapstructure:"password"`
+	VHost      string `mapstructure:"vhost"`
+	Exchange   string `mapstructure:"exchange"`
+	RoutingKey string `mapstructure:"routing_key"`
+	Queue      string `mapstructure:"queue"`
+	DLQ        string `mapstructure:"dlq"`
+}
+
+type Redis struct {
+	Host     string        `mapstructure:"host"`
+	Port     int           `mapstructure:"port"`
+	Password string        `mapstructure:"password"`
+	DB       int           `mapstructure:"db"`
+	TTL      time.Duration `mapstructure:"ttl"`
+}
+
+type Retry struct {
+	Attempts int           `mapstructure:"attempts"`
+	Delay    time.Duration `mapstructure:"delay"`
+	Backoff  float64       `mapstructure:"backoff"`
+	MaxDelay time.Duration `mapstructure:"max_delay"`
 }
 
 func Must() *Config {
