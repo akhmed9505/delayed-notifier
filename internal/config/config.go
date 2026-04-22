@@ -14,6 +14,7 @@ type Config struct {
 	RabbitMQ   RabbitMQ   `mapstructure:"rabbitmq"`
 	Redis      Redis      `mapstructure:"redis"`
 	Retry      Retry      `mapstructure:"retry"`
+	Logging    Logging    `mapstructure:"logging"`
 }
 
 type HTTPServer struct {
@@ -64,6 +65,10 @@ type Retry struct {
 	Delay    time.Duration `mapstructure:"delay"`
 	Backoff  float64       `mapstructure:"backoff"`
 	MaxDelay time.Duration `mapstructure:"max_delay"`
+}
+
+type Logging struct {
+	Level string `mapstructure:"level"`
 }
 
 func Must() *Config {

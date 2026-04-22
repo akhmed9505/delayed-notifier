@@ -37,3 +37,6 @@ retry:
   delay: 1s
   backoff: 2.0
   max_delay: 1m
+
+logging:
+  level: info
