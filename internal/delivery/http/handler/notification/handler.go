@@ -1,13 +1,11 @@
 package notification
 
 import (
-	"errors"
 	"net/http"
-	"time"
 
+	"github.com/akhmed9505/delayed-notifier/internal/delivery/http/helpers"
 	"github.com/akhmed9505/delayed-notifier/internal/delivery/http/response"
 	"github.com/akhmed9505/delayed-notifier/internal/domain"
-	"github.com/google/uuid"
 	"github.com/wb-go/wbf/ginext"
 )
 
@@ -27,13 +25,13 @@ func (h *Handler) Create(c *ginext.Context) {
 		return
 	}
 
-	sendAt, err := time.Parse(time.RFC3339, req.SendAt)
+	sendAt, err := helpers.ParseSendAt(req.SendAt)
 	if err != nil {
-		response.BadRequest(c, errInvalidSendAt)
+		response.BadRequest(c, err.Error())
 		return
 	}
 
-	channel, err := parseChannel(req.Channel)
+	channel, err := helpers.ParseChannel(req.Channel)
 	if err != nil {
 		response.BadRequest(c, err.Error())
 		return
@@ -57,9 +55,9 @@ func (h *Handler) Create(c *ginext.Context) {
 }
 
 func (h *Handler) GetStatus(c *ginext.Context) {
-	id, err := uuid.Parse(c.Param("id"))
+	id, err := helpers.ParseUUIDParam(c, "id")
 	if err != nil {
-		response.BadRequest(c, errInvalidID)
+		response.BadRequest(c, err.Error())
 		return
 	}
 
@@ -76,28 +74,16 @@ func (h *Handler) GetStatus(c *ginext.Context) {
 }
 
 func (h *Handler) Cancel(c *ginext.Context) {
-	id, err := uuid.Parse(c.Param("id"))
+	id, err := helpers.ParseUUIDParam(c, "id")
 	if err != nil {
-		response.BadRequest(c, errInvalidID)
+		response.BadRequest(c, err.Error())
 		return
 	}
 
-	err = h.svc.UpdateStatus(c.Request.Context(), id, domain.Canceled)
-	if err != nil {
+	if err := h.svc.UpdateStatus(c.Request.Context(), id, domain.Canceled); err != nil {
 		response.InternalError(c, errCancelFailed)
 		return
 	}
 
 	c.Status(http.StatusNoContent)
-}
-
-func parseChannel(s string) (domain.NotificationChannel, error) {
-	switch s {
-	case string(domain.Email):
-		return domain.Email, nil
-	case string(domain.Telegram):
-		return domain.Telegram, nil
-	default:
-		return "", errors.New("invalid channel")
-	}
 }
