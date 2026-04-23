@@ -3,6 +3,7 @@ module github.com/akhmed9505/delayed-notifier
 go 1.26.1
 
 require (
+	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/google/uuid v1.4.0
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/wb-go/wbf v0.0.13
