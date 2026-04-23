@@ -15,6 +15,8 @@ type Config struct {
 	Redis      Redis      `mapstructure:"redis"`
 	Retry      Retry      `mapstructure:"retry"`
 	Logging    Logging    `mapstructure:"logging"`
+	SMTP       SMTP       `mapstructure:"smtp"`
+	Telegram   Telegram   `mapstructure:"telegram"`
 }
 
 type HTTPServer struct {
@@ -69,6 +71,20 @@ type Retry struct {
 
 type Logging struct {
 	Level string `mapstructure:"level"`
+}
+
+type SMTP struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"pass"`
+	From     string `mapstructure:"from"`
+	UseTLS   bool   `mapstructure:"use_tls"`
+}
+
+type Telegram struct {
+	Token  string `mapstructure:"token"`
+	ChatID string `mapstructure:"chat_id"`
 }
 
 func Must() *Config {
