@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Delayed Notifier</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <div id="notification" class="notification hidden"></div>
+
+    <div class="main-container">
+
+        <h1>Отложенные уведомления</h1>
+
+        <div class="content">
+
+            <div class="card">
+                <h2 class="card-title">Создать уведомление</h2>
+
+                <form id="createForm" class="form">
+
+                    <select id="channel" class="input spaced">
+                        <option value="email">Email</option>
+                        <option value="telegram">Telegram</option>
+                    </select>
+
+                    <input id="recipient" class="input spaced" placeholder="Получатель">
+                    <input id="message" class="input spaced" placeholder="Сообщение">
+                    <input id="send_at" class="input spaced" type="datetime-local">
+
+                    <button type="submit" class="button button-primary spaced">
+                        Создать
+                    </button>
+
+                </form>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Проверка статуса</h2>
+
+                <form id="statusForm" class="form">
+                    <input id="checkId" class="input spaced" placeholder="ID уведомления">
+                    <button type="submit" class="button button-secondary spaced">
+                        Проверить
+                    </button>
+                </form>
+
+                <div id="result-container" class="result-container hidden">
+                    <div id="result"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">История</h2>
+            <div id="history-container" class="history-container"></div>
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
