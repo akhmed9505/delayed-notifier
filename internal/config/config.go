@@ -2,6 +2,8 @@ package config
 
 import (
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/wb-go/wbf/config"
@@ -111,6 +113,40 @@ func Must() *Config {
 
 	if val, ok := os.LookupEnv("DB_PASSWORD"); ok {
 		cfg.Postgres.Password = val
+	}
+
+	if val, ok := os.LookupEnv("SMTP_HOST"); ok {
+		cfg.SMTP.Host = val
+	}
+
+	if val, ok := os.LookupEnv("SMTP_PORT"); ok {
+		if port, err := strconv.Atoi(val); err == nil {
+			cfg.SMTP.Port = port
+		}
+	}
+
+	if val, ok := os.LookupEnv("SMTP_USER"); ok {
+		cfg.SMTP.User = val
+	}
+
+	if val, ok := os.LookupEnv("SMTP_PASS"); ok {
+		cfg.SMTP.Password = val
+	}
+
+	if val, ok := os.LookupEnv("SMTP_FROM"); ok {
+		cfg.SMTP.From = val
+	}
+
+	if val, ok := os.LookupEnv("SMTP_USE_TLS"); ok {
+		cfg.SMTP.UseTLS = strings.EqualFold(val, "true") || val == "1"
+	}
+
+	if val, ok := os.LookupEnv("TELEGRAM_TOKEN"); ok {
+		cfg.Telegram.Token = val
+	}
+
+	if val, ok := os.LookupEnv("TELEGRAM_CHAT_ID"); ok {
+		cfg.Telegram.ChatID = val
 	}
 
 	return &cfg

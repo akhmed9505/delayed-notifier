@@ -1,12 +1,9 @@
 services:
   frontend:
-    build:
-      context: ./web
+    build: ./web
     container_name: notifier_frontend
     ports:
-      - "3000:80" # http://localhost:3000
-    environment:
-      - VITE_API_URL=http://notifier:8080
+      - "3000:80"
     depends_on:
       - notifier
     networks:
@@ -19,10 +16,12 @@ services:
       - "8080:8080"
     env_file:
       - .env
+    volumes:
+      - ./config:/app/config:ro
     depends_on:
       db:
         condition: service_healthy
-      migrator: 
+      migrator:
         condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
@@ -68,14 +67,14 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     networks:
       - app-network
 
@@ -85,10 +84,10 @@ services:
     restart: always
     ports:
       - "6379:6379"
-    environment: 
+    environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -96,9 +95,11 @@ services:
       - app-network
 
   rabbitmq:
-    image: rabbitmq:3.13-management
+    image: rabbitmq:3.13-management-alpine
     container_name: rabbitmq
     restart: always
+    command: >
+      sh -c "wget https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/v3.13.0/rabbitmq_delayed_message_exchange-3.13.0.ez -O /opt/rabbitmq/plugins/rabbitmq_delayed_message_exchange.ez && rabbitmq-plugins enable rabbitmq_delayed_message_exchange --offline && rabbitmq-server"
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -106,7 +107,7 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "status"]
+      test: [ "CMD", "rabbitmq-diagnostics", "status" ]
       interval: 10s
       timeout: 5s
       retries: 5
