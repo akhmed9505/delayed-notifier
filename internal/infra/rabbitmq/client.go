@@ -3,7 +3,7 @@ package rabbitmq
 import (
 	"fmt"
 
-	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/rabbitmq/amqp091-go"
 	wbrabbitmq "github.com/wb-go/wbf/rabbitmq"
 )
 
@@ -22,7 +22,7 @@ func NewClient(url string) (*Client, error) {
 	return &Client{inner: inner}, nil
 }
 
-func (c *Client) GetChannel() (*amqp.Channel, error) {
+func (c *Client) GetChannel() (*amqp091.Channel, error) {
 	if c == nil || c.inner == nil {
 		return nil, fmt.Errorf("rabbitmq client not initialized")
 	}

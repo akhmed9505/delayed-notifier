@@ -1,7 +1,7 @@
 package rabbitmq
 
-import amqp "github.com/rabbitmq/amqp091-go"
+import "github.com/rabbitmq/amqp091-go"
 
 type ChannelProvider interface {
-	GetChannel() (*amqp.Channel, error)
+	GetChannel() (*amqp091.Channel, error)
 }

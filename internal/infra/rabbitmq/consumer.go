@@ -4,25 +4,42 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
+	"math/rand"
+	"time"
 
-	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/rabbitmq/amqp091-go"
 )
 
 type Handler interface {
 	Handle(ctx context.Context, msg NotificationMessage) error
 }
 
-type Consumer struct {
-	ch      *amqp.Channel
-	queue   string
-	handler Handler
+type RetryConfig struct {
+	MaxAttempts int
+	BaseDelay   time.Duration
+	Multiplier  float64
+	MaxDelay    time.Duration
+	JitterPct   float64
 }
 
-func NewConsumer(ch *amqp.Channel, queue string, handler Handler) *Consumer {
+type Consumer struct {
+	ch         *amqp091.Channel
+	queue      string
+	exchange   string
+	routingKey string
+	retry      RetryConfig
+	handler    Handler
+}
+
+func NewConsumer(ch *amqp091.Channel, queue, exchange, routingKey string, retry RetryConfig, handler Handler) *Consumer {
 	return &Consumer{
-		ch:      ch,
-		queue:   queue,
-		handler: handler,
+		ch:         ch,
+		queue:      queue,
+		exchange:   exchange,
+		routingKey: routingKey,
+		retry:      retry,
+		handler:    handler,
 	}
 }
 
@@ -56,7 +73,50 @@ func (c *Consumer) Start(ctx context.Context) error {
 				continue
 			}
 
-			if err := c.handler.Handle(ctx, msg); err != nil {
+			err := c.handler.Handle(ctx, msg)
+			if err == nil {
+				_ = d.Ack(false)
+				continue
+			}
+
+			attempt := msg.Attempt
+			if h := headerInt(d.Headers, "x-attempt"); h > attempt {
+				attempt = h
+			}
+
+			nextAttempt := attempt + 1
+
+			if c.retry.MaxAttempts > 0 && nextAttempt > c.retry.MaxAttempts {
+				fmt.Printf("[retry] GIVE UP id=%s attempts=%d error=%v\n",
+					msg.ID, nextAttempt-1, err)
+
+				_ = d.Nack(false, false)
+				continue
+			}
+
+			delay := c.retryDelay(nextAttempt)
+
+			fmt.Printf("[retry] id=%s attempt=%d delay=%s error=%v\n",
+				msg.ID, nextAttempt, delay, err)
+
+			msg.Attempt = nextAttempt
+
+			retryBody, mErr := json.Marshal(msg)
+			if mErr != nil {
+				_ = d.Nack(false, false)
+				continue
+			}
+
+			headers := amqp091.Table{
+				"x-delay":   delay.Milliseconds(),
+				"x-attempt": nextAttempt,
+			}
+
+			if err := c.ch.PublishWithContext(ctx, c.exchange, c.routingKey, false, false, amqp091.Publishing{
+				ContentType: "application/json",
+				Body:        retryBody,
+				Headers:     headers,
+			}); err != nil {
 				_ = d.Nack(false, true)
 				continue
 			}
@@ -64,4 +124,62 @@ func (c *Consumer) Start(ctx context.Context) error {
 			_ = d.Ack(false)
 		}
 	}
+}
+
+func headerInt(headers amqp091.Table, key string) int {
+	if headers == nil {
+		return 0
+	}
+	switch v := headers[key].(type) {
+	case int:
+		return v
+	case int64:
+		return int(v)
+	case int32:
+		return int(v)
+	default:
+		return 0
+	}
+}
+
+func (c *Consumer) retryDelay(attempt int) time.Duration {
+	base := c.retry.BaseDelay
+	if base <= 0 {
+		base = time.Second
+	}
+
+	mult := c.retry.Multiplier
+	if mult <= 0 {
+		mult = 2
+	}
+
+	maxDelay := c.retry.MaxDelay
+	if maxDelay <= 0 {
+		maxDelay = time.Minute
+	}
+
+	raw := float64(base) * math.Pow(mult, float64(attempt-1))
+	delay := time.Duration(raw)
+
+	if delay > maxDelay {
+		delay = maxDelay
+	}
+
+	jp := c.retry.JitterPct
+	if jp <= 0 {
+		return delay
+	}
+
+	if jp > 1 {
+		jp = 1
+	}
+
+	f := 1 + (rand.Float64()*2-1)*jp
+	final := time.Duration(float64(delay) * f)
+
+	if final < 0 {
+		return 0
+	}
+
+	return final
 }

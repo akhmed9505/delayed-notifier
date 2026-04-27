@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/rabbitmq/amqp091-go"
 )
 
 type Publisher struct {
@@ -22,6 +22,7 @@ func NewPublisher(client ChannelProvider, cfg QueueConfig) *Publisher {
 }
 
 func (p *Publisher) Publish(ctx context.Context, msg NotificationMessage) error {
+	msg.Attempt = 0
 	body, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("marshal message: %w", err)
@@ -38,8 +39,9 @@ func (p *Publisher) Publish(ctx context.Context, msg NotificationMessage) error 
 		delay = 0
 	}
 
-	headers := amqp.Table{
-		"x-delay": delay.Milliseconds(),
+	headers := amqp091.Table{
+		"x-delay":   delay.Milliseconds(),
+		"x-attempt": 0,
 	}
 
 	return ch.PublishWithContext(
@@ -48,11 +50,11 @@ func (p *Publisher) Publish(ctx context.Context, msg NotificationMessage) error 
 		p.cfg.RoutingKey,
 		false,
 		false,
-		amqp.Publishing{
+		amqp091.Publishing{
 			ContentType:  "application/json",
 			Body:         body,
 			Headers:      headers,
-			DeliveryMode: amqp.Persistent,
+			DeliveryMode: amqp091.Persistent,
 		},
 	)
 }

@@ -3,7 +3,7 @@ package rabbitmq
 import (
 	"fmt"
 
-	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/rabbitmq/amqp091-go"
 )
 
 type QueueConfig struct {
@@ -14,8 +14,10 @@ type QueueConfig struct {
 	RoutingKey string
 }
 
-func SetupQueues(ch *amqp.Channel, cfg QueueConfig) error {
-	if err := ch.ExchangeDeclare(cfg.Exchange, "direct", true, false, false, false, nil); err != nil {
+func SetupQueues(ch *amqp091.Channel, cfg QueueConfig) error {
+	if err := ch.ExchangeDeclare(cfg.Exchange, "x-delayed-message", true, false, false, false, amqp091.Table{
+		"x-delayed-type": "direct",
+	}); err != nil {
 		return fmt.Errorf("exchange: %w", err)
 	}
 
@@ -23,12 +25,12 @@ func SetupQueues(ch *amqp.Channel, cfg QueueConfig) error {
 		return fmt.Errorf("dlx: %w", err)
 	}
 
-	_, err := ch.QueueDeclare(cfg.DLQ, true, false, false, false, amqp.Table{})
+	_, err := ch.QueueDeclare(cfg.DLQ, true, false, false, false, amqp091.Table{})
 	if err != nil {
 		return fmt.Errorf("dlq: %w", err)
 	}
 
-	_, err = ch.QueueDeclare(cfg.Queue, true, false, false, false, amqp.Table{
+	_, err = ch.QueueDeclare(cfg.Queue, true, false, false, false, amqp091.Table{
 		"x-dead-letter-exchange":    cfg.DLX,
 		"x-dead-letter-routing-key": cfg.DLQ,
 	})

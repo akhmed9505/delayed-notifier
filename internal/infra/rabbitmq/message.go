@@ -8,4 +8,5 @@ type NotificationMessage struct {
 	Recipient string    `json:"recipient"`
 	Channel   string    `json:"channel"`
 	SendAt    time.Time `json:"send_at"`
+	Attempt   int       `json:"attempt"`
 }
