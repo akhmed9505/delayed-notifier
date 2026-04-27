@@ -2,12 +2,12 @@ package worker
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/akhmed9505/delayed-notifier/internal/infra/rabbitmq"
 	"github.com/google/uuid"
-	"github.com/wb-go/wbf/logger"
+	"github.com/wb-go/wbf/zlog"
 )
 
 type Mailer interface {
@@ -23,14 +23,14 @@ type NotificationHandler struct {
 	statusUpdater NotificationStatusUpdater
 	email         Mailer
 	telegram      Mailer
-	log           *logger.ZerologAdapter
+	log           zlog.Zerolog
 }
 
 func NewNotificationHandler(
 	svc NotificationStatusUpdater,
 	email Mailer,
 	telegram Mailer,
-	log *logger.ZerologAdapter,
+	log zlog.Zerolog,
 ) *NotificationHandler {
 	return &NotificationHandler{
 		statusUpdater: svc,
@@ -40,45 +40,26 @@ func NewNotificationHandler(
 	}
 }
 
-func (h *NotificationHandler) Handle(ctx context.Context, body []byte) error {
-	var msg struct {
-		ID          uuid.UUID `json:"id"`
-		Message     string    `json:"message"`
-		Destination string    `json:"destination"`
-		Channel     string    `json:"channel"`
-		SendAt      time.Time `json:"send_at"`
-	}
-
-	if err := json.Unmarshal(body, &msg); err != nil {
-		h.log.Error("unmarshal failed", "err", err, "body", string(body))
-		return fmt.Errorf("unmarshal error: %w", err)
-	}
-
-	status, err := h.statusUpdater.Status(ctx, msg.ID)
+func (h *NotificationHandler) Handle(ctx context.Context, msg rabbitmq.NotificationMessage) error {
+	id, err := uuid.Parse(msg.ID)
 	if err != nil {
-		h.log.Error("status check failed", "id", msg.ID, "err", err)
+		h.log.Error().Str("id", msg.ID).Err(err).Msg("invalid notification id")
+		return fmt.Errorf("invalid notification id: %w", err)
+	}
+
+	status, err := h.statusUpdater.Status(ctx, id)
+	if err != nil {
+		h.log.Error().Str("id", id.String()).Err(err).Msg("status check failed")
 		return fmt.Errorf("status check error: %w", err)
 	}
 
-	if status == "canceled" {
-		h.log.Info("notification canceled, skipping", "id", msg.ID)
+	if status != "pending" {
+		h.log.Info().
+			Str("id", id.String()).
+			Str("status", status).
+			Int("attempt", msg.Attempt).
+			Msg("skip: not pending")
 		return nil
-	}
-
-	if !msg.SendAt.IsZero() {
-		wait := time.Until(msg.SendAt)
-		if wait > 0 {
-			h.log.Info("delayed execution", "id", msg.ID, "wait", wait)
-
-			timer := time.NewTimer(wait)
-			defer timer.Stop()
-
-			select {
-			case <-timer.C:
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-		}
 	}
 
 	var sender Mailer
@@ -89,28 +70,56 @@ func (h *NotificationHandler) Handle(ctx context.Context, body []byte) error {
 	case "telegram":
 		sender = h.telegram
 	default:
-		h.log.Error("unknown channel", "id", msg.ID, "channel", msg.Channel)
+		h.log.Error().
+			Str("id", id.String()).
+			Str("channel", msg.Channel).
+			Msg("unknown channel")
+
+		_ = h.statusUpdater.UpdateStatus(ctx, id, "failed")
 		return fmt.Errorf("unknown channel: %s", msg.Channel)
 	}
 
-	if sender == nil {
-		h.log.Error("nil sender", "id", msg.ID, "channel", msg.Channel)
-		return fmt.Errorf("sender not initialized: %s", msg.Channel)
+	const maxRetries = 3
+
+	var sendErr error
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		sendErr = sender.Send(ctx, msg.Message, msg.Recipient)
+
+		if sendErr == nil {
+			h.log.Info().
+				Str("id", id.String()).
+				Int("attempt", attempt).
+				Msg("send success")
+
+			break
+		}
+
+		h.log.Error().
+			Str("id", id.String()).
+			Int("attempt", attempt).
+			Err(sendErr).
+			Msg("send attempt failed")
+
+		if attempt < maxRetries {
+			time.Sleep(time.Duration(attempt) * 2 * time.Second)
+		}
 	}
 
-	if err := sender.Send(ctx, msg.Message, msg.Destination); err != nil {
-		h.log.Error("send failed", "id", msg.ID, "err", err)
+	if sendErr != nil {
+		_ = h.statusUpdater.UpdateStatus(ctx, id, "failed")
 
-		_ = h.statusUpdater.UpdateStatus(ctx, msg.ID, "failed")
-
-		return fmt.Errorf("send failed: %w", err)
+		return fmt.Errorf("send failed after %d attempts: %w", maxRetries, sendErr)
 	}
 
-	if err := h.statusUpdater.UpdateStatus(ctx, msg.ID, "sent"); err != nil {
-		h.log.Error("status update failed", "id", msg.ID, "err", err)
+	if err := h.statusUpdater.UpdateStatus(ctx, id, "sent"); err != nil {
+		h.log.Error().Str("id", id.String()).Err(err).Msg("status update failed")
 		return fmt.Errorf("status update failed: %w", err)
 	}
 
-	h.log.Info("notification sent successfully", "id", msg.ID)
+	h.log.Info().
+		Str("id", id.String()).
+		Msg("notification sent successfully")
+
 	return nil
 }
