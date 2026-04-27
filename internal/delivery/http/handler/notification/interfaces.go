@@ -1,3 +1,4 @@
+//go:generate mockgen -source=interfaces.go -destination=mocks.go -package=notification
 package notification
 
 import (
@@ -12,4 +13,3 @@ type Service interface {
 	GetStatusByID(ctx context.Context, id uuid.UUID) (domain.NotificationStatus, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.NotificationStatus) error
 }
-

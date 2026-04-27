@@ -1,3 +1,4 @@
+//go:generate mockgen -source=interfaces.go -destination=mocks.go -package=notification
 package notification
 
 import (

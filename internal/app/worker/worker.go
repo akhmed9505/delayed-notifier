@@ -1,3 +1,4 @@
+//go:generate mockgen -source=worker.go -destination=mocks.go -package=worker
 package worker
 
 import "context"
