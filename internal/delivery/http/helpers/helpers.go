@@ -27,17 +27,17 @@ func ParseChannel(s string) (domain.NotificationChannel, error) {
 }
 
 func ParseSendAt(s string) (time.Time, error) {
-	loc, err := time.LoadLocation("Europe/Moscow")
-	if err != nil {
-		return time.Time{}, err
+	msk := time.FixedZone("MSK", 3*60*60)
+
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t, nil
 	}
 
-	t, err := time.ParseInLocation(time.RFC3339, s, loc)
-	if err != nil {
-		return time.Time{}, ErrInvalidSendAt
+	if t, err := time.ParseInLocation("2006-01-02T15:04:05", s, msk); err == nil {
+		return t, nil
 	}
 
-	return t, nil
+	return time.Time{}, ErrInvalidSendAt
 }
 
 func ParseUUIDParam(c *ginext.Context, param string) (uuid.UUID, error) {

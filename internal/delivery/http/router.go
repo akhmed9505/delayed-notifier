@@ -1,4 +1,4 @@
-package handler
+package http
 
 import (
 	"github.com/akhmed9505/delayed-notifier/internal/delivery/http/handler/notification"
@@ -10,6 +10,7 @@ func NewRouter(handler *notification.Handler) *ginext.Engine {
 	r := ginext.New("")
 
 	r.Use(ginext.Recovery())
+	r.Use(middleware.CORS())
 	r.Use(middleware.Logger())
 
 	if handler == nil {

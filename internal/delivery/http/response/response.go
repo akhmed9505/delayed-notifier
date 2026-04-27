@@ -18,6 +18,10 @@ func BadRequest(c *ginext.Context, msg string) {
 	JSONError(c, http.StatusBadRequest, msg)
 }
 
+func NotFound(c *ginext.Context, msg string) {
+	JSONError(c, http.StatusNotFound, msg)
+}
+
 func InternalError(c *ginext.Context, msg string) {
 	JSONError(c, http.StatusInternalServerError, msg)
 }

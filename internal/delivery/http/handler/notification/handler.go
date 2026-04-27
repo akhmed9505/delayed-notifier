@@ -1,11 +1,14 @@
 package notification
 
 import (
+	"errors"
 	"net/http"
+	"time"
 
 	"github.com/akhmed9505/delayed-notifier/internal/delivery/http/helpers"
 	"github.com/akhmed9505/delayed-notifier/internal/delivery/http/response"
 	"github.com/akhmed9505/delayed-notifier/internal/domain"
+	notifyrepo "github.com/akhmed9505/delayed-notifier/internal/repository/notification"
 	"github.com/wb-go/wbf/ginext"
 )
 
@@ -28,6 +31,11 @@ func (h *Handler) Create(c *ginext.Context) {
 	sendAt, err := helpers.ParseSendAt(req.SendAt)
 	if err != nil {
 		response.BadRequest(c, err.Error())
+		return
+	}
+
+	if sendAt.UTC().Before(time.Now().UTC()) {
+		response.BadRequest(c, errInvalidSendAt)
 		return
 	}
 
@@ -63,6 +71,10 @@ func (h *Handler) GetStatus(c *ginext.Context) {
 
 	status, err := h.svc.GetStatusByID(c.Request.Context(), id)
 	if err != nil {
+		if errors.Is(err, notifyrepo.ErrNotificationNotFound) {
+			response.NotFound(c, errNotFound)
+			return
+		}
 		response.InternalError(c, errStatusFailed)
 		return
 	}
@@ -81,6 +93,10 @@ func (h *Handler) Cancel(c *ginext.Context) {
 	}
 
 	if err := h.svc.UpdateStatus(c.Request.Context(), id, domain.Canceled); err != nil {
+		if errors.Is(err, notifyrepo.ErrNotificationNotFound) {
+			response.NotFound(c, errNotFound)
+			return
+		}
 		response.InternalError(c, errCancelFailed)
 		return
 	}
