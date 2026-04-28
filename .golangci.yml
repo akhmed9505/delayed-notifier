@@ -1,0 +1,29 @@
+linters:
+  disable-all: true
+  enable:
+    - govet
+    - staticcheck
+    - gosec
+    - ineffassign
+    - unused
+    - errcheck
+    - errorlint
+
+linters-settings:
+  staticcheck:
+    checks:
+      - all
+
+issues:
+  exclude-files:
+    - ".*_test\\.go"
+    - ".*mocks\\.go"
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+  tests: false
+  skip-dirs:
+    - web
+    - tests
+    - migrations
