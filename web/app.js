@@ -18,11 +18,11 @@ function initializePage() {
 }
 
 function setupFormListeners() {
-  const createForm = document.getElementById('createForm');
-  const statusForm = document.getElementById('statusForm');
+  document.getElementById('createForm')
+    .addEventListener('submit', handleCreateNotification);
 
-  createForm.addEventListener('submit', handleCreateNotification);
-  statusForm.addEventListener('submit', handleGetStatus);
+  document.getElementById('statusForm')
+    .addEventListener('submit', handleGetStatus);
 }
 
 function showNotification(message, type = 'info') {
@@ -33,9 +33,7 @@ function showNotification(message, type = 'info') {
 
   setTimeout(() => {
     notification.classList.add('hide-animation');
-    setTimeout(() => {
-      notification.classList.add('hidden');
-    }, 300);
+    setTimeout(() => notification.classList.add('hidden'), 300);
   }, 3000);
 }
 
@@ -60,22 +58,19 @@ async function handleCreateNotification(e) {
   }
 
   try {
-    const payload = {
-      channel,
-      recipient,
-      message,
-      send_at: sendAtDate.toISOString()
-    };
-
     const res = await fetch(`${API_URL}/notify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        channel,
+        recipient,
+        message,
+        send_at: sendAtDate.toISOString()
+      })
     });
 
     if (!res.ok) {
-      const errText = await res.text();
-      showNotification(`Ошибка: ${errText}`, 'error');
+      showNotification(await res.text(), 'error');
       return;
     }
 
@@ -86,17 +81,18 @@ async function handleCreateNotification(e) {
       channel,
       recipient,
       message,
-      send_at: sendAtDate.toISOString()
+      send_at: sendAtDate.toISOString(),
+      status: 'pending'
     });
 
     displayNotificationHistory();
 
-    document.getElementById('createForm').reset();
+    e.target.reset();
     initializePage();
 
     showNotification('Уведомление создано', 'success');
 
-  } catch (err) {
+  } catch {
     showNotification('Ошибка сети', 'error');
   }
 }
@@ -105,7 +101,6 @@ async function handleGetStatus(e) {
   e.preventDefault();
 
   const id = document.getElementById('checkId').value;
-
   if (!id) {
     showNotification('Введите ID', 'error');
     return;
@@ -115,88 +110,123 @@ async function handleGetStatus(e) {
     const res = await fetch(`${API_URL}/notify/${id}`);
 
     if (!res.ok) {
-      const errText = await res.text();
-      showNotification(`Ошибка: ${errText}`, 'error');
+      showNotification(await res.text(), 'error');
       return;
     }
 
     const data = await res.json();
 
-    document.getElementById('result').innerHTML = `
+    const container = document.getElementById('result');
+
+    const isPending = data.status === 'pending';
+
+    container.innerHTML = `
       <div><b>ID:</b> ${data.id}</div>
       <div><b>Status:</b> ${data.status}</div>
+
+      ${isPending ? `
+        <button id="cancelBtn" data-id="${data.id}" class="cancel-btn">
+          Отменить уведомление
+        </button>
+      ` : ''}
     `;
 
     document.getElementById('result-container').classList.remove('hidden');
 
-  } catch (err) {
+    const btn = document.getElementById('cancelBtn');
+
+    if (!btn) return;
+
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+
+      const check = await fetch(`${API_URL}/notify/${id}`);
+      const latest = await check.json();
+
+      if (latest.status !== 'pending') {
+        showNotification('Уведомление уже отправлено или отменено', 'error');
+
+        container.innerHTML = `
+          <div><b>ID:</b> ${latest.id}</div>
+          <div><b>Status:</b> ${latest.status}</div>
+        `;
+
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/notify/${id}`, {
+          method: 'DELETE'
+        });
+
+        if (!res.ok && res.status !== 204) {
+          showNotification(await res.text(), 'error');
+          return;
+        }
+
+        showNotification('Уведомление отменено', 'success');
+
+        handleGetStatus(e);
+
+      } catch {
+        showNotification('Ошибка сети', 'error');
+      }
+    });
+
+  } catch {
     showNotification('Ошибка сети', 'error');
   }
 }
 
 function loadNotificationsFromStorage() {
   const stored = localStorage.getItem('notifications');
-  if (stored) {
-    notifications.push(...JSON.parse(stored));
-  }
+  if (stored) notifications.push(...JSON.parse(stored));
 }
 
 function displayNotificationHistory() {
   const container = document.getElementById('history-container');
 
-  if (notifications.length === 0) {
+  if (!notifications.length) {
     container.innerHTML = '<p>Нет уведомлений</p>';
     return;
   }
 
-  container.innerHTML = notifications.map((n) => {
+  container.innerHTML = notifications.map(n => {
     const t = formatSendAt(n.send_at);
+
     return `
-  <div class="history-item">
+      <div class="history-item">
+        <div class="history-left">
+          <div class="history-id">${n.id}</div>
+          <div>${n.channel} → ${n.recipient}</div>
+          <div>${n.message}</div>
+        </div>
 
-    <div class="history-left">
-      <div class="history-id">${n.id}</div>
-      <div class="history-recipient">${n.channel} → ${n.recipient}</div>
-      <div class="history-message collapsed">
-        ${n.message}
+        <div>
+          <div>${t.date}</div>
+          <div>${t.time}</div>
+        </div>
       </div>
-    </div>
-
-    <div class="sendat-badge">
-      <div class="sendat-label">Send at</div>
-      <div class="sendat-date">${t.date}</div>
-      <div class="sendat-time">${t.time}</div>
-    </div>
-
-  </div>
-`;
+    `;
   }).join('');
-
-  document.querySelectorAll('.history-message').forEach(el => {
-    el.addEventListener('click', () => {
-      el.classList.toggle('collapsed');
-    });
-  });
 }
 
 function formatSendAt(dateStr) {
   const d = new Date(dateStr);
-
-  const pad = (n) => n.toString().padStart(2, '0');
+  const pad = n => n.toString().padStart(2, '0');
 
   const day = pad(d.getDate());
   const month = pad(d.getMonth() + 1);
   const year = d.getFullYear();
 
-  let hours = d.getHours();
-  const minutes = pad(d.getMinutes());
+  let h = d.getHours();
+  const m = pad(d.getMinutes());
 
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
 
   return {
     date: `${day}.${month}.${year}`,
-    time: `${hours}:${minutes} ${ampm}`
+    time: `${h}:${m} ${ampm}`
   };
 }
