@@ -155,5 +155,10 @@ func TestHandler_Cancel_Success(t *testing.T) {
 	req, _ := http.NewRequest("PUT", "/notifications/"+testID.String()+"/cancel", nil)
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNoContent, w.Code)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp map[string]string
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	assert.Equal(t, "notification canceled", resp["message"])
 }

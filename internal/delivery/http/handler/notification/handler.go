@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/wb-go/wbf/ginext"
 
 	"github.com/akhmed9505/delayed-notifier/internal/delivery/http/helpers"
@@ -109,5 +110,7 @@ func (h *Handler) Cancel(c *ginext.Context) {
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusOK, gin.H{
+		"message": "notification canceled",
+	})
 }
