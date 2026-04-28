@@ -8,9 +8,10 @@ import (
 	context "context"
 	reflect "reflect"
 
-	domain "github.com/akhmed9505/delayed-notifier/internal/domain"
 	gomock "github.com/golang/mock/gomock"
 	uuid "github.com/google/uuid"
+
+	domain "github.com/akhmed9505/delayed-notifier/internal/domain"
 )
 
 // MockRepository is a mock of Repository interface.

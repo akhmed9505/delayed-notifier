@@ -5,10 +5,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/akhmed9505/delayed-notifier/internal/domain"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/akhmed9505/delayed-notifier/internal/domain"
 )
 
 func TestService_Create_Success(t *testing.T) {

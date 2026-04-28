@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/akhmed9505/delayed-notifier/internal/domain"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/wb-go/wbf/ginext"
+
+	"github.com/akhmed9505/delayed-notifier/internal/domain"
 )
 
 func TestHandler_Create_Success(t *testing.T) {

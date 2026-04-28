@@ -2,9 +2,17 @@
 format:
 	goimports -local github.com/akhmed9505/delayed-notifier -w .
 
-# Run linters: vet + golangci-lint
+# Run golangci-lint (main lint command)
 lint:
-	go vet ./... && golangci-lint run ./...
+	golangci-lint run ./...
+
+# Run golangci-lint with auto-fix where possible
+lint-fix:
+	golangci-lint run ./... --fix
+
+# Run all tests (unit + integration)
+test:
+	go test ./...
 
 # Build and start all Docker services
 docker-up:

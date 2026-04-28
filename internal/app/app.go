@@ -1,10 +1,16 @@
+// Package app provides the main application configuration, dependency injection,
+// and startup logic for the delayed-notifier service.
 package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+
+	"github.com/google/uuid"
+	"github.com/wb-go/wbf/zlog"
 
 	"github.com/akhmed9505/delayed-notifier/internal/app/worker"
 	"github.com/akhmed9505/delayed-notifier/internal/config"
@@ -18,10 +24,9 @@ import (
 	"github.com/akhmed9505/delayed-notifier/internal/logger"
 	notifyrepo "github.com/akhmed9505/delayed-notifier/internal/repository/notification"
 	svcnotification "github.com/akhmed9505/delayed-notifier/internal/service/notification"
-	"github.com/google/uuid"
-	"github.com/wb-go/wbf/zlog"
 )
 
+// App holds the application dependencies, configuration, and infrastructure components.
 type App struct {
 	Config       *config.Config
 	Repositories *Repositories
@@ -30,22 +35,27 @@ type App struct {
 	Server       *http.Server
 }
 
+// Repositories groups all data access layer components.
 type Repositories struct {
 	Notifications *notifyrepo.Repository
 }
 
+// Services groups all business logic service components.
 type Services struct {
 	Notifications *svcnotification.Service
 }
 
+// notificationStatusUpdater acts as an adapter to bridge the service layer with the worker's status requirements.
 type notificationStatusUpdater struct {
 	service *svcnotification.Service
 }
 
+// UpdateStatus implements the worker.NotificationStatusUpdater interface.
 func (u *notificationStatusUpdater) UpdateStatus(ctx context.Context, noteID uuid.UUID, status string) error {
 	return u.service.UpdateStatus(ctx, noteID, domain.NotificationStatus(status))
 }
 
+// Status retrieves the current notification status. Implements the worker.NotificationStatusUpdater interface.
 func (u *notificationStatusUpdater) Status(ctx context.Context, noteID uuid.UUID) (string, error) {
 	status, err := u.service.GetStatusByID(ctx, noteID)
 	if err != nil {
@@ -54,10 +64,12 @@ func (u *notificationStatusUpdater) Status(ctx context.Context, noteID uuid.UUID
 	return string(status), nil
 }
 
+// rabbitmqPublisherAdapter adapts the infrastructure publisher to the domain needs.
 type rabbitmqPublisherAdapter struct {
 	publisher *rabbitmq.Publisher
 }
 
+// Publish sends a notification to the message broker.
 func (a *rabbitmqPublisherAdapter) Publish(ctx context.Context, notification domain.Notification) error {
 	return a.publisher.Publish(ctx, rabbitmq.NotificationMessage{
 		ID:        notification.ID.String(),
@@ -69,6 +81,7 @@ func (a *rabbitmqPublisherAdapter) Publish(ctx context.Context, notification dom
 	})
 }
 
+// New initializes a new App instance, setting up all infrastructure, repositories, services, and handlers.
 func New(ctx context.Context) (*App, error) {
 	cfg := config.Must()
 	logger.Init(cfg)
@@ -146,7 +159,7 @@ func New(ctx context.Context) (*App, error) {
 
 	httpHandler := notificationhandler.New(svcs.Notifications)
 	router := httpdelivery.NewRouter(httpHandler)
-	server := httpdelivery.NewServer(fmt.Sprintf(":%d", cfg.HTTPServer.Port), router)
+	server := httpdelivery.NewServer(fmt.Sprintf(":%d", cfg.HTTPServer.Port), router, cfg.HTTPServer)
 
 	consumerChannel, err := rabbitClient.GetChannel()
 	if err != nil {
@@ -178,6 +191,7 @@ func New(ctx context.Context) (*App, error) {
 	}, nil
 }
 
+// Run starts the HTTP server and handles graceful shutdown based on context cancellation.
 func (a *App) Run(ctx context.Context) error {
 	errCh := make(chan error, 1)
 
@@ -187,7 +201,7 @@ func (a *App) Run(ctx context.Context) error {
 
 	select {
 	case err := <-errCh:
-		if err == http.ErrServerClosed {
+		if errors.Is(err, http.ErrServerClosed) {
 			return nil
 		}
 		return err

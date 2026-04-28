@@ -1,3 +1,4 @@
+// Package sender provides infrastructure logic for sending notifications via various channels.
 package sender
 
 import (
@@ -5,14 +6,17 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/akhmed9505/delayed-notifier/internal/config"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
+	"github.com/akhmed9505/delayed-notifier/internal/config"
 )
 
+// TelegramChannel implements the notification sender interface for sending messages via Telegram.
 type TelegramChannel struct {
 	bot *tgbotapi.BotAPI
 }
 
+// NewTelegramChannel initializes a new Telegram bot instance with the provided configuration.
 func NewTelegramChannel(cfg *config.Telegram) (*TelegramChannel, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.Token)
 	if err != nil {
@@ -22,6 +26,7 @@ func NewTelegramChannel(cfg *config.Telegram) (*TelegramChannel, error) {
 	return &TelegramChannel{bot: bot}, nil
 }
 
+// Send transmits a message to the specified Telegram chat ID.
 func (t *TelegramChannel) Send(ctx context.Context, message, recipient string) error {
 	chatID, err := strconv.ParseInt(recipient, 10, 64)
 	if err != nil {

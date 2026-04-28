@@ -1,20 +1,28 @@
+// Package helpers provides utility functions for HTTP request parsing and validation.
 package helpers
 
 import (
 	"errors"
 	"time"
 
-	"github.com/akhmed9505/delayed-notifier/internal/domain"
 	"github.com/google/uuid"
 	"github.com/wb-go/wbf/ginext"
+
+	"github.com/akhmed9505/delayed-notifier/internal/domain"
 )
 
 var (
+	// ErrInvalidChannel indicates that the provided notification channel is not supported.
 	ErrInvalidChannel = errors.New("invalid channel")
-	ErrInvalidSendAt  = errors.New("invalid send_at, expected RFC3339")
-	ErrInvalidID      = errors.New("invalid id")
+
+	// ErrInvalidSendAt indicates that the provided timestamp format is incorrect.
+	ErrInvalidSendAt = errors.New("invalid send_at, expected RFC3339")
+
+	// ErrInvalidID indicates that the provided parameter is not a valid UUID.
+	ErrInvalidID = errors.New("invalid id")
 )
 
+// ParseChannel converts a string representation of a channel into a domain.NotificationChannel.
 func ParseChannel(s string) (domain.NotificationChannel, error) {
 	switch s {
 	case string(domain.Email):
@@ -26,6 +34,8 @@ func ParseChannel(s string) (domain.NotificationChannel, error) {
 	}
 }
 
+// ParseSendAt parses a date string into a time.Time object.
+// It supports RFC3339 format and a specific local format (2006-01-02T15:04:05) in the MSK timezone.
 func ParseSendAt(s string) (time.Time, error) {
 	msk := time.FixedZone("MSK", 3*60*60)
 
@@ -40,6 +50,7 @@ func ParseSendAt(s string) (time.Time, error) {
 	return time.Time{}, ErrInvalidSendAt
 }
 
+// ParseUUIDParam extracts a UUID parameter from the Gin request context.
 func ParseUUIDParam(c *ginext.Context, param string) (uuid.UUID, error) {
 	idStr := c.Param(param)
 

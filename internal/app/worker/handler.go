@@ -1,3 +1,5 @@
+// Package worker implements notification processing logic, including
+// handling incoming messages, state management, and delivery via external channels.
 package worker
 
 import (
@@ -5,20 +7,24 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/akhmed9505/delayed-notifier/internal/infra/rabbitmq"
 	"github.com/google/uuid"
 	"github.com/wb-go/wbf/zlog"
+
+	"github.com/akhmed9505/delayed-notifier/internal/infra/rabbitmq"
 )
 
+// Mailer defines the interface for sending messages through a specific communication channel.
 type Mailer interface {
 	Send(ctx context.Context, message, destination string) error
 }
 
+// NotificationStatusUpdater defines the interface for managing notification state in the storage.
 type NotificationStatusUpdater interface {
 	UpdateStatus(ctx context.Context, noteID uuid.UUID, status string) error
 	Status(ctx context.Context, noteID uuid.UUID) (string, error)
 }
 
+// NotificationHandler orchestrates the processing of notification messages from the queue.
 type NotificationHandler struct {
 	statusUpdater NotificationStatusUpdater
 	email         Mailer
@@ -26,6 +32,7 @@ type NotificationHandler struct {
 	log           zlog.Zerolog
 }
 
+// NewNotificationHandler creates a new instance of NotificationHandler with the provided dependencies.
 func NewNotificationHandler(
 	svc NotificationStatusUpdater,
 	email Mailer,
@@ -40,6 +47,8 @@ func NewNotificationHandler(
 	}
 }
 
+// Handle processes a notification message by verifying its status, delivering it
+// via the configured channel, and updating the database with the result.
 func (h *NotificationHandler) Handle(ctx context.Context, msg rabbitmq.NotificationMessage) error {
 	id, err := uuid.Parse(msg.ID)
 	if err != nil {

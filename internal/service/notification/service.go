@@ -1,3 +1,4 @@
+// Package notification provides service-level logic for handling notifications, coordinating between storage, caching, and message publishing.
 package notification
 
 import (
@@ -6,17 +7,20 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/akhmed9505/delayed-notifier/internal/domain"
 	"github.com/google/uuid"
 	"github.com/wb-go/wbf/zlog"
+
+	"github.com/akhmed9505/delayed-notifier/internal/domain"
 )
 
+// Service orchestrates the notification workflow, managing creation, status retrieval, and status updates by interacting with the repository, cache, and publisher.
 type Service struct {
 	repository Repository
 	publisher  Publisher
 	cache      Cache
 }
 
+// New initializes a new Service with the required repository, publisher, and cache dependencies.
 func New(repository Repository, publisher Publisher, cache Cache) *Service {
 	return &Service{
 		repository: repository,
@@ -25,6 +29,7 @@ func New(repository Repository, publisher Publisher, cache Cache) *Service {
 	}
 }
 
+// Create persists a new notification, caches its initial status, and publishes it for processing.
 func (s *Service) Create(ctx context.Context, notification domain.Notification) (uuid.UUID, error) {
 	now := time.Now()
 	notification.CreatedAt = now
@@ -65,6 +70,7 @@ func (s *Service) Create(ctx context.Context, notification domain.Notification) 
 	return id, nil
 }
 
+// GetStatusByID retrieves the current status of a notification, attempting to fetch it from the cache first and falling back to the database.
 func (s *Service) GetStatusByID(ctx context.Context, id uuid.UUID) (domain.NotificationStatus, error) {
 	status, err := s.cache.GetStatus(ctx, id)
 	if err == nil {
@@ -103,6 +109,7 @@ func (s *Service) GetStatusByID(ctx context.Context, id uuid.UUID) (domain.Notif
 	return status, nil
 }
 
+// UpdateStatus updates the status of a notification in both the persistent store and the cache.
 func (s *Service) UpdateStatus(ctx context.Context, id uuid.UUID, status domain.NotificationStatus) error {
 	if err := s.repository.UpdateStatus(ctx, id, status); err != nil {
 		zlog.Logger.Error().

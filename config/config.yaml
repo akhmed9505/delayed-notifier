@@ -1,19 +1,22 @@
+# HTTP server configuration
 http_server:
   port: 8080
   read_timeout: 5s
   write_timeout: 5s
-  shutdown_timeout: 10s
+  shutdown_timeout: 10s # Time to wait for active connections to close
   
+# Database connection settings
 postgres:
   host: "db"
   port: 5432
   database: "notifier_db"
   ssl_mode: "disable"
   pool:
-    max_conns: 10
-    min_conns: 2
+    max_conns: 10 # Maximum number of connections in the pool
+    min_conns: 2  # Minimum number of idle connections
     max_conn_lifetime: 30m
 
+# Message broker settings
 rabbitmq:
   host: "rabbitmq"
   port: 5672
@@ -25,18 +28,21 @@ rabbitmq:
   queue: "notification-queue"
   dlq: "notification-dlq"
 
+# Caching and state settings
 redis:
   host: "redis"
   port: 6379
   password: ""
   db: 0
-  ttl: 24h
+  ttl: 24h # Time to live for cache entries
 
+# Retry strategy configuration
 retry:
   attempts: 5
   delay: 1s
-  backoff: 2.0
+  backoff: 2.0 # Multiplier for delay between retries
   max_delay: 1m
 
+# Logging configuration
 logging:
   level: info

@@ -1,3 +1,4 @@
+// Package notification handles HTTP requests for creating, checking, and canceling notifications.
 package notification
 
 import (
@@ -5,21 +6,26 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/wb-go/wbf/ginext"
+
 	"github.com/akhmed9505/delayed-notifier/internal/delivery/http/helpers"
 	"github.com/akhmed9505/delayed-notifier/internal/delivery/http/response"
 	"github.com/akhmed9505/delayed-notifier/internal/domain"
 	notifyrepo "github.com/akhmed9505/delayed-notifier/internal/repository/notification"
-	"github.com/wb-go/wbf/ginext"
 )
 
+// Handler manages notification-related HTTP endpoints.
 type Handler struct {
 	svc Service
 }
 
+// New initializes a new Handler with the provided Service implementation.
 func New(svc Service) *Handler {
 	return &Handler{svc: svc}
 }
 
+// Create handles the request to create a new notification.
+// It parses the JSON body, validates input, and delegates the creation to the service layer.
 func (h *Handler) Create(c *ginext.Context) {
 	var req createRequest
 
@@ -62,6 +68,7 @@ func (h *Handler) Create(c *ginext.Context) {
 	c.JSON(http.StatusCreated, createResponse{ID: id.String()})
 }
 
+// GetStatus retrieves the status of a notification by its ID.
 func (h *Handler) GetStatus(c *ginext.Context) {
 	id, err := helpers.ParseUUIDParam(c, "id")
 	if err != nil {
@@ -85,6 +92,7 @@ func (h *Handler) GetStatus(c *ginext.Context) {
 	})
 }
 
+// Cancel updates the status of a notification to "canceled".
 func (h *Handler) Cancel(c *ginext.Context) {
 	id, err := helpers.ParseUUIDParam(c, "id")
 	if err != nil {

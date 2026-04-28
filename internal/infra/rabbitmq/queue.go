@@ -1,3 +1,4 @@
+// Package rabbitmq provides infrastructure logic for RabbitMQ message consumption and retry handling.
 package rabbitmq
 
 import (
@@ -6,6 +7,7 @@ import (
 	"github.com/rabbitmq/amqp091-go"
 )
 
+// QueueConfig holds the configuration parameters for RabbitMQ exchanges and queues.
 type QueueConfig struct {
 	Exchange   string
 	Queue      string
@@ -14,6 +16,7 @@ type QueueConfig struct {
 	RoutingKey string
 }
 
+// SetupQueues declares and binds the necessary exchanges and queues, including Dead Letter configuration.
 func SetupQueues(ch *amqp091.Channel, cfg QueueConfig) error {
 	if err := ch.ExchangeDeclare(cfg.Exchange, "x-delayed-message", true, false, false, false, amqp091.Table{
 		"x-delayed-type": "direct",

@@ -1,3 +1,4 @@
+// Package rabbitmq provides infrastructure logic for RabbitMQ message publishing and consumption.
 package rabbitmq
 
 import (
@@ -9,11 +10,13 @@ import (
 	"github.com/rabbitmq/amqp091-go"
 )
 
+// Publisher is responsible for sending notification messages to the RabbitMQ exchange.
 type Publisher struct {
 	client ChannelProvider
 	cfg    QueueConfig
 }
 
+// NewPublisher initializes a new Publisher instance with the given client and configuration.
 func NewPublisher(client ChannelProvider, cfg QueueConfig) *Publisher {
 	return &Publisher{
 		client: client,
@@ -21,6 +24,7 @@ func NewPublisher(client ChannelProvider, cfg QueueConfig) *Publisher {
 	}
 }
 
+// Publish sends a notification message to the configured exchange with a delay based on the SendAt field.
 func (p *Publisher) Publish(ctx context.Context, msg NotificationMessage) error {
 	msg.Attempt = 0
 	body, err := json.Marshal(msg)

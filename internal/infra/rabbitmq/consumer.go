@@ -1,3 +1,4 @@
+// Package rabbitmq provides infrastructure logic for RabbitMQ message consumption and retry handling.
 package rabbitmq
 
 import (
@@ -11,10 +12,12 @@ import (
 	"github.com/rabbitmq/amqp091-go"
 )
 
+// Handler defines the interface for processing notification messages.
 type Handler interface {
 	Handle(ctx context.Context, msg NotificationMessage) error
 }
 
+// RetryConfig holds the configuration for exponential backoff retry strategy.
 type RetryConfig struct {
 	MaxAttempts int
 	BaseDelay   time.Duration
@@ -23,6 +26,7 @@ type RetryConfig struct {
 	JitterPct   float64
 }
 
+// Consumer manages the RabbitMQ consumption process, including automatic retries.
 type Consumer struct {
 	ch         *amqp091.Channel
 	queue      string
@@ -30,8 +34,10 @@ type Consumer struct {
 	routingKey string
 	retry      RetryConfig
 	handler    Handler
+	rnd        *rand.Rand
 }
 
+// NewConsumer initializes a new Consumer instance.
 func NewConsumer(ch *amqp091.Channel, queue, exchange, routingKey string, retry RetryConfig, handler Handler) *Consumer {
 	return &Consumer{
 		ch:         ch,
@@ -40,9 +46,12 @@ func NewConsumer(ch *amqp091.Channel, queue, exchange, routingKey string, retry 
 		routingKey: routingKey,
 		retry:      retry,
 		handler:    handler,
+		rnd:        rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 }
 
+// Start begins consuming messages from the queue and processing them using the provided handler.
+// It handles retry logic with exponential backoff if the handler returns an error.
 func (c *Consumer) Start(ctx context.Context) error {
 	deliveries, err := c.ch.Consume(
 		c.queue,
@@ -79,6 +88,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 				continue
 			}
 
+			// Calculate next attempt
 			attempt := msg.Attempt
 			if h := headerInt(d.Headers, "x-attempt"); h > attempt {
 				attempt = h
@@ -86,6 +96,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 
 			nextAttempt := attempt + 1
 
+			// Check if we reached the maximum number of attempts
 			if c.retry.MaxAttempts > 0 && nextAttempt > c.retry.MaxAttempts {
 				fmt.Printf("[retry] GIVE UP id=%s attempts=%d error=%v\n",
 					msg.ID, nextAttempt-1, err)
@@ -107,11 +118,13 @@ func (c *Consumer) Start(ctx context.Context) error {
 				continue
 			}
 
+			// Prepare headers for the delayed retry
 			headers := amqp091.Table{
 				"x-delay":   delay.Milliseconds(),
 				"x-attempt": nextAttempt,
 			}
 
+			// Re-publish the message to the retry exchange/queue
 			if err := c.ch.PublishWithContext(ctx, c.exchange, c.routingKey, false, false, amqp091.Publishing{
 				ContentType: "application/json",
 				Body:        retryBody,
@@ -126,10 +139,12 @@ func (c *Consumer) Start(ctx context.Context) error {
 	}
 }
 
+// headerInt is a helper to safely extract integer values from RabbitMQ headers.
 func headerInt(headers amqp091.Table, key string) int {
 	if headers == nil {
 		return 0
 	}
+
 	switch v := headers[key].(type) {
 	case int:
 		return v
@@ -142,6 +157,7 @@ func headerInt(headers amqp091.Table, key string) int {
 	}
 }
 
+// retryDelay calculates the delay duration based on exponential backoff and jitter.
 func (c *Consumer) retryDelay(attempt int) time.Duration {
 	base := c.retry.BaseDelay
 	if base <= 0 {
@@ -174,7 +190,7 @@ func (c *Consumer) retryDelay(attempt int) time.Duration {
 		jp = 1
 	}
 
-	f := 1 + (rand.Float64()*2-1)*jp
+	f := 1 + (c.rnd.Float64()*2-1)*jp
 	final := time.Duration(float64(delay) * f)
 
 	if final < 0 {

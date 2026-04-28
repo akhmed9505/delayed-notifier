@@ -1,3 +1,4 @@
+// Package notification provides infrastructure logic for persisting and retrieving notification data in PostgreSQL.
 package notification
 
 import (
@@ -12,16 +13,20 @@ import (
 	"github.com/akhmed9505/delayed-notifier/internal/domain"
 )
 
+// ErrNotificationNotFound is returned when a requested notification does not exist in the database.
 var ErrNotificationNotFound = errors.New("notification not found")
 
+// Repository manages the database operations for notifications.
 type Repository struct {
 	db *dbpg.DB
 }
 
+// New initializes a new Repository instance with the provided database connection.
 func New(db *dbpg.DB) *Repository {
 	return &Repository{db: db}
 }
 
+// Create inserts a new notification record into the database and returns its unique identifier.
 func (r *Repository) Create(ctx context.Context, notification domain.Notification) (uuid.UUID, error) {
 	const op = "notification.repository.Create"
 
@@ -60,6 +65,7 @@ func (r *Repository) Create(ctx context.Context, notification domain.Notificatio
 	return id, nil
 }
 
+// GetStatusByID retrieves the status of a notification by its unique identifier.
 func (r *Repository) GetStatusByID(ctx context.Context, id uuid.UUID) (domain.NotificationStatus, error) {
 	const op = "notification.repository.GetStatusByID"
 
@@ -83,13 +89,14 @@ func (r *Repository) GetStatusByID(ctx context.Context, id uuid.UUID) (domain.No
 	return status, nil
 }
 
+// UpdateStatus updates the status of an existing notification in the database.
 func (r *Repository) UpdateStatus(ctx context.Context, id uuid.UUID, status domain.NotificationStatus) error {
 	const op = "notification.repository.UpdateStatus"
 
 	query := `
 		UPDATE notifications
 		SET status = $1,
-		    updated_at = NOW()
+			updated_at = NOW()
 		WHERE id = $2
 	`
 

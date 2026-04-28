@@ -1,3 +1,4 @@
+// Package config provides structures and loading logic for application configuration.
 package config
 
 import (
@@ -10,6 +11,7 @@ import (
 	"github.com/wb-go/wbf/zlog"
 )
 
+// Config represents the root application configuration.
 type Config struct {
 	HTTPServer HTTPServer `mapstructure:"http_server"`
 	Postgres   Postgres   `mapstructure:"postgres"`
@@ -21,6 +23,7 @@ type Config struct {
 	Telegram   Telegram   `mapstructure:"telegram"`
 }
 
+// HTTPServer defines configuration for the HTTP server.
 type HTTPServer struct {
 	Port            int           `mapstructure:"port"`
 	ReadTimeout     time.Duration `mapstructure:"read_timeout"`
@@ -28,6 +31,7 @@ type HTTPServer struct {
 	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout"`
 }
 
+// Postgres defines PostgreSQL connection settings.
 type Postgres struct {
 	Host     string     `mapstructure:"host"`
 	Port     int        `mapstructure:"port"`
@@ -38,12 +42,14 @@ type Postgres struct {
 	Database string     `mapstructure:"database"`
 }
 
+// PoolConfig defines connection pool settings for database drivers.
 type PoolConfig struct {
 	MaxConns        int32         `mapstructure:"max_conns"`
 	MinConns        int32         `mapstructure:"min_conns"`
 	MaxConnLifetime time.Duration `mapstructure:"max_conn_lifetime"`
 }
 
+// RabbitMQ defines message broker connection and queue settings.
 type RabbitMQ struct {
 	Host       string `mapstructure:"host"`
 	Port       int    `mapstructure:"port"`
@@ -56,6 +62,7 @@ type RabbitMQ struct {
 	DLQ        string `mapstructure:"dlq"`
 }
 
+// Redis defines caching configuration.
 type Redis struct {
 	Host     string        `mapstructure:"host"`
 	Port     int           `mapstructure:"port"`
@@ -64,6 +71,7 @@ type Redis struct {
 	TTL      time.Duration `mapstructure:"ttl"`
 }
 
+// Retry defines strategy settings for retry mechanisms.
 type Retry struct {
 	Attempts int           `mapstructure:"attempts"`
 	Delay    time.Duration `mapstructure:"delay"`
@@ -71,10 +79,12 @@ type Retry struct {
 	MaxDelay time.Duration `mapstructure:"max_delay"`
 }
 
+// Logging defines application logging settings.
 type Logging struct {
 	Level string `mapstructure:"level"`
 }
 
+// SMTP defines mail server settings.
 type SMTP struct {
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
@@ -84,11 +94,14 @@ type SMTP struct {
 	UseTLS   bool   `mapstructure:"use_tls"`
 }
 
+// Telegram defines notification channel settings for Telegram.
 type Telegram struct {
 	Token  string `mapstructure:"token"`
 	ChatID string `mapstructure:"chat_id"`
 }
 
+// Must loads the configuration from files and environment variables.
+// It panics if the configuration cannot be loaded.
 func Must() *Config {
 	c := config.New()
 

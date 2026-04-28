@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/akhmed9505/delayed-notifier/internal/domain"
-	"github.com/akhmed9505/delayed-notifier/internal/repository/notification"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/wb-go/wbf/dbpg"
+
+	"github.com/akhmed9505/delayed-notifier/internal/domain"
+	"github.com/akhmed9505/delayed-notifier/internal/repository/notification"
 )
 
 type RepositoryTestSuite struct {
